@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright 2016 Google Inc. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@drawable/main_shape"
+              android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="3dp"
+        android:layout_marginRight="3dp"
+        android:gravity="bottom"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvsource"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingBottom="3dp"
+                android:paddingTop="5dp"
+                android:paddingLeft="15dp"
+                android:text="@string/source_language"
+                android:textSize="10dp"/>
+
+            <Spinner
+                android:id="@+id/spinner_source"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignTop="@id/tvsource"
+                android:layout_toRightOf="@id/tvsource"
+                android:entries="@array/lang_spinner"
+                />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvtarget"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingBottom="3dp"
+                android:paddingTop="5dp"
+                android:paddingLeft="15dp"
+                android:text="@string/target_language"
+                android:textSize="10dp"/>
+
+            <Spinner
+                android:id="@+id/spinner_target"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignTop="@id/tvtarget"
+                android:layout_toRightOf="@id/tvtarget"
+                android:entries="@array/lang_spinner"
+                />
+
+        </LinearLayout>
+    </LinearLayout>
+
+    <android.support.design.widget.CoordinatorLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:textAllCaps="false"
+        tools:context="com.google.cloud.android.speech.MainActivity">
+
+        <android.support.design.widget.AppBarLayout
+            android:id="@+id/app_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/colorPrimary"
+            android:theme="@style/ThemeOverlay.AppCompat.Dark">
+
+            <include layout="@layout/item_result"/>
+
+        </android.support.design.widget.AppBarLayout>
+
+        <android.support.v7.widget.RecyclerView
+            android:id="@+id/recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="@dimen/spacing_small"
+            android:paddingTop="@dimen/spacing_small"
+            android:textSize="10dp"
+            app:behavior_overlapTop="128dp"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior"/>
+
+        <!--<Button-->
+            <!--android:id="@+id/but_speak"-->
+            <!--android:layout_width="match_parent"-->
+            <!--android:layout_height="wrap_content"-->
+
+            <!--android:layout_alignParentBottom="true"-->
+            <!--android:text="请按住说话"/>-->
+
+        <!--<android.support.design.widget.FloatingActionButton-->
+            <!--android:id="@+id/fbut_speak"-->
+            <!--android:layout_width="wrap_content"-->
+            <!--android:layout_height="wrap_content"-->
+            <!--android:layout_gravity="bottom|center"-->
+            <!--android:layout_margin="16dp"-->
+            <!--app:backgroundTint="@color/green"-->
+            <!--app:rippleColor="@color/yellow"-->
+            <!--app:fabSize="normal"-->
+            <!--app:elevation="8dp"/>-->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginLeft="3dp"
+            android:layout_marginRight="3dp"
+            android:gravity="bottom|center"
+            android:layout_marginBottom="25dp"
+            android:orientation="horizontal">
+            <!--<TextView-->
+                <!--android:id="@+id/tvbutt"-->
+                <!--android:layout_width="wrap_content"-->
+                <!--android:layout_height="wrap_content"-->
+                <!--android:paddingBottom="3dp"-->
+                <!--android:paddingTop="5dp"-->
+                <!--android:paddingLeft="15dp"-->
+                <!--android:text="             "/>-->
+
+        <Button
+            android:id="@+id/but_speak_client"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center"
+            android:background="@drawable/button_shape"
+            android:paddingBottom="6dp"
+            android:paddingLeft="30dp"
+            android:paddingRight="30dp"
+            android:paddingTop="6dp"
+            android:radius="5dp"
+            android:shape="rectangle"
+            android:textSize="12dp"
+            android:textColor="@color/white"
+            android:text="@string/hold_text"
+            android:textAllCaps="false"/>
+
+            <Button
+                android:id="@+id/but_speak_server"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:background="@drawable/button_shape"
+
+                android:layout_marginLeft="10dp"
+                android:radius="5dp"
+                android:shape="rectangle"
+                android:textSize="12dp"
+                android:textColor="@color/white"
+                android:text="@string/server_hold_text"
+                android:textAllCaps="false"/>
+        </LinearLayout>
+
+    </android.support.design.widget.CoordinatorLayout>
+
+    <!--<LinearLayout-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="match_parent"-->
+        <!--android:layout_marginLeft="5dp"-->
+        <!--android:layout_marginRight="5dp"-->
+        <!--android:gravity="bottom"-->
+        <!--android:orientation="vertical">-->
+        <!--<Button-->
+        <!--android:id="@+id/but_translation"-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:layout_alignParentBottom="true"-->
+        <!--android:text="translation"/>-->
+
+        <!--<Button-->
+            <!--android:id="@+id/but_speak"-->
+            <!--android:layout_width="match_parent"-->
+            <!--android:layout_height="wrap_content"-->
+            <!--android:layout_alignParentBottom="true"-->
+            <!--android:text="按住说话"/>-->
+    <!--</LinearLayout>-->
+
+</LinearLayout>

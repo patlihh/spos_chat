@@ -1,0 +1,77 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="com.uni.cloud.chat.login.LoginFragment">
+
+    <EditText
+        android:id="@+id/et_account"
+        android:layout_width="200dp"
+        android:layout_height="56dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="32dp"
+        android:textColorHint="#8effffff"
+        android:paddingEnd="16dp"
+        android:background="@drawable/bubble"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:hint="@string/account_id"
+        android:textColor="#ffffff" />
+
+    <EditText
+        android:id="@+id/et_password"
+        android:layout_width="200dp"
+        android:layout_height="56dp"
+        android:paddingEnd="16dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bubble"
+        android:textColorHint="#8effffff"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:hint="@string/password"
+        android:textColor="#ffffff" />
+
+    <!--<TextView-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="48dp"-->
+        <!--android:layout_gravity="center_horizontal"-->
+        <!--android:id="@+id/forgot_password"-->
+        <!--android:layout_marginTop="64dp"-->
+        <!--android:gravity="center"-->
+        <!--android:text="@string/forgot_password"-->
+        <!--android:textColor="#ffffff" />-->
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_gravity="center_horizontal"
+        android:id="@+id/but_login"
+        android:layout_marginTop="56dp"
+        android:gravity="center"
+        android:textSize="12dp"
+        android:radius="5dp"
+        android:textColor="@color/white"
+        android:shape="rectangle"
+        android:textAllCaps="false"
+        android:background="@drawable/login_button_shape"
+        android:text="@string/server_hold_text"
+         />
+
+    <!--<Button-->
+        <!--android:id="@+id/but_speak_server"-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="48dp"-->
+        <!--android:layout_gravity="bottom"-->
+        <!--android:background="@drawable/button_shape"-->
+
+        <!--android:layout_marginLeft="10dp"-->
+        <!--android:radius="5dp"-->
+        <!--android:shape="rectangle"-->
+        <!--android:textSize="12dp"-->
+        <!--android:textColor="@color/white"-->
+        <!--android:text="@string/server_hold_text"-->
+        <!--android:textAllCaps="false"/>-->
+
+</LinearLayout>

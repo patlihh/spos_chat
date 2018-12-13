@@ -1,0 +1,170 @@
+syntax = "proto3"; // protocol buffer proto3
+
+option java_multiple_files = true;
+option java_package = "io.grpc.uni.spos";
+option java_outer_classname = "sPosChatProto";
+
+//go:generate root@uniser03:/usr/lhh/gopath/src/spos_proto/uni/voice# protoc -I . --go_out=plugins=grpc:. chat.proto
+// package: chat
+
+
+package spos;   
+/*
+service name:Chat
+*/
+service Chat {   
+ 
+    rpc Login(ClientLoginReq) returns (ClientLoginRes){}
+	
+	rpc Logout(ClientLogoutReq) returns (ClientLogoutRes){}
+	
+	rpc HeartMsg(ClientHeartReq) returns (ClientHeartRes){}
+	
+	rpc RecvMsgStream(RecvMsgReq) returns (stream RecvMsgRes) {}
+//	rpc RecvMsgAndBeatStream(stream RecvMsgReq) returns (stream RecvMsgRes) {}
+
+	rpc SendMsgStream(stream SendMsgReq) returns (SendMsgRes){}
+
+    rpc BidStream(stream ClientSendMsgToServer) returns (stream ServerSendMsgToClient) {}
+	
+	// Sends a greeting
+    rpc SayHello (HelloRequest) returns (HelloReply) {}
+}
+
+//  client login Req
+message ClientLoginReq {
+	string sid = 1;
+	string password = 2;
+	string name = 3;
+	string mac = 4;
+	
+}
+
+message ClientLoginRes {
+    bool ret = 1;
+	string res_str = 2;	
+	string res_token = 3;
+}
+
+//  client logout Req
+message ClientLogoutReq {
+	string sid = 1;
+	string name = 2;
+	string mac = 3;
+	
+}
+
+message ClientLogoutRes {
+    bool ret = 1;	
+}
+
+//  client heart Req
+message ClientHeartReq {
+	string sid = 1;
+	string mac = 2;	
+}
+
+message ClientHeartRes {
+    bool ret = 1;	
+	string msg = 2;
+}
+
+message RecvMsgReq {
+	string sid = 1;
+	string name = 2;
+	string smac = 3;  	
+}
+
+message RecvMsgRes {
+  		enum MsgType{
+		TEXT = 0;
+		VOICE =1;
+		IMAGE =2;
+		VIDEO =3;
+	}
+	MsgType mtype =1;
+	string sid = 2;
+	string smac = 3;
+	string did = 4;
+	string dmac =5;
+ 	int32 sample_rate=6;
+	string msg_id = 7;
+	int32 msg_num = 8;
+	int32  msg_len = 9;
+	int32 msg_status = 10;
+	bytes msg = 11;
+}
+
+message SendMsgReq {
+	enum MsgType{
+		TEXT = 0;
+		VOICE =1;
+		IMAGE =2;
+		VIDEO =3;
+	}
+	MsgType mtype =1;
+	string sid = 2;
+	string smac = 3;	
+	string did = 4;
+	string dmac = 5;
+ 	int32 sample_rate=6;
+	string msg_id = 7;
+	int32 msg_num = 8;
+	int32  msg_len = 9;
+	int32 msg_status = 10;
+	bytes msg = 11;
+
+}
+
+message SendMsgRes {
+	int32 ret = 1;	
+	string msg = 2;
+}
+
+//  client send data to server
+message ClientSendMsgToServer {
+	enum MsgType{
+		TEXT = 0;
+		VOICE =1;
+		IMAGE =2;
+		VIDEO =3;
+	}
+	MsgType mtype =1;
+	string sid = 2;
+	string did = 3;
+ 	int32 sample_rate=4;
+	string msg_id = 5;
+	int32 msg_num = 6;
+	int32  msg_len = 7;
+	int32 msg_status = 8;
+	bytes msg = 9;
+
+}
+// server send data to client
+message ServerSendMsgToClient {
+ 	enum MsgType{
+		TEXT = 0;
+		VOICE =1;
+		IMAGE =2;
+		VIDEO =3;
+	}
+	MsgType mtype =1;
+	string sid = 2;
+	string did = 3;	
+ 	int32 sample_rate=4;
+	string msg_id = 5;
+	int32 msg_num = 6;
+	int32  msg_len = 7;
+	int32 msg_status = 8;
+	bytes msg = 9;
+}
+
+// The request message containing the user's name.
+message HelloRequest {
+  string name = 1;
+}
+
+// The response message containing the greetings
+message HelloReply {
+  string message = 1;
+}

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright 2016 Google Inc. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<resources>
+    <color name="primary">#f94ca7af</color>
+    <color name="primary_dark">#388E3C</color>
+    <color name="accent">#536DFE</color>
+    <color name="green">#008000</color><!--绿色 -->
+    <color name="yellow">#FFFF00</color><!--黄色 -->
+    <color name="status_hearing">#7B1FA2</color>
+    <color name="status_not_hearing">#555555</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="blue">#0000FF</color>
+    <color name="theme_positive_color">#4A87EE</color>
+    <color name="border_line">#D9D9D9</color>
+    <color name="gray">#9e9e9e</color>
+    <color name="red">#FF0000</color>
+    <!--ToolBar的背景色-->
+    <color name="toolbarBackground">@android:color/white</color>
+    <!--Activity的主背景色-->
+    <color name="activityRootBackground">#EBEBEB</color>
+    <!--分隔线的颜色-->
+    <color name="dividerColor">#b5beb9</color>
+    <!--聊天界面提示信息的背景色-->
+    <color name="hintTextBg">#30acb0b4</color>
+
+    <color name="greenStatusLine">#41e169</color>
+
+    <color name="colorPrimary">#131A56</color>
+    <color name="colorPrimaryDark">#131A56</color>
+    <color name="secondPage">#00838F</color>
+    <color name="colorAccent">#ba68c8</color>
+    <color name="text">#ffffff</color>
+    <color name="text_two">#94ffffff</color>
+
+    <color name="side_bar_text">#4A4A4A</color>
+    <color name="shadow_bg">#66000000</color>
+    <color name="edit_bg">#EFEFF4</color>
+    <color name="darker_gray">#9b9b9b</color>
+
+</resources>
