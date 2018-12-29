@@ -7,7 +7,7 @@ public class Option {
     public static final int ssl_port = 61056;
     public static final String test_host =  "139.224.221.196";
     public static final int test_port = 61055;      //"139.224.221.196":61056   192.168.10.82:61055;
-    public static final String  dns_name =  "www.gubstech.com";
+    public static final String  dns_name =  "gubstech.com";
 
     public static final int TTS_FEMALE = 2;
     public static final int TTS_MP3_AUDIO_CODE = 2;
@@ -54,4 +54,13 @@ public class Option {
     public static final int heart_time= 5*60;      //s
 
     public static final int heart_fail_max_num= 3;      //s
+
+    public class Opus{
+        public static final boolean Is_Opus               = true;   //true;
+        public static final int SAMPLE_RATE      = 8000;
+        public static final int NUM_CHANNELS     = 1;
+        public static final int FRAME_SIZE = 160;
+
+    }
+
 }

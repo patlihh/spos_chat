@@ -13,8 +13,10 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.uni.cloud.chat.ChatApplication;
 import com.uni.cloud.chat.R;
 import com.uni.cloud.chat.misc.Option;
 
@@ -27,6 +29,8 @@ public class LoginFragment extends Fragment implements OnLoginListener {
 
     String account_id;
     String password;
+
+    TextView version;
 
     LoginActivity parentActivity ;
     public LoginFragment() {
@@ -48,6 +52,9 @@ public class LoginFragment extends Fragment implements OnLoginListener {
         et_password.setText("1234567");
 
         parentActivity = (LoginActivity ) getActivity();
+
+        version = inflate.findViewById(R.id.version);
+        version.setText("v"+ChatApplication.getLocalVersionName(this.parentActivity));
 
         et_account.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override

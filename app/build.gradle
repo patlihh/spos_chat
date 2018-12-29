@@ -18,8 +18,8 @@ apply plugin: 'com.android.application'
 apply plugin: 'com.google.protobuf'
 
 ext {
-//  supportLibraryVersion = '25.4.0'
-    supportLibraryVersion = '28.0.0-alpha3'
+ //  supportLibraryVersion = '25.4.0'
+   supportLibraryVersion = '28.0.0'
     grpcVersion = '1.14.0'      //1.12.0
     lifecycle_version = '1.1.1'
 }
@@ -30,18 +30,17 @@ def releaseTime() {
 }
 
 android {
-//    compileSdkVersion 25
-//    buildToolsVersion '25.0.3'
-    compileSdkVersion = 28
-    buildToolsVersion = "28.0.2"
-
+    compileSdkVersion 28
+    buildToolsVersion '28.0.2'
+//    compileSdkVersion = 28
+    //   buildToolsVersion = "28.0.2"
     defaultConfig {
         applicationId "com.uni.cloud.chat"
-//        targetSdkVersion 25
-        minSdkVersion 19
+//       targetSdkVersion 25
+        minSdkVersion 21
         targetSdkVersion 28
         versionCode 1
-        versionName '1.2'
+        versionName '1.05'
 //        jackOptions {
 //            enabled true
 //        }
@@ -49,23 +48,27 @@ android {
         vectorDrawables.useSupportLibrary = true
 //        useJack true
     }
-
     dataBinding {
         enabled = true
     }
-
     signingConfigs {
         release {
-            storeFile file(project.properties.storeFile)
-            storePassword project.properties.storePassword
-            keyAlias project.properties.keyAlias
-            keyPassword project.properties.keyPassword
+            storeFile file('F:/liwenbin/pos/sp20.jks')
+            storePassword 'unitone'
+            keyAlias 'key0'
+            keyPassword 'unitone'
+        }
+        debug {
+            storeFile file('F:/liwenbin/pos/sp20.jks')
+            storePassword 'unitone'
+            keyAlias 'key0'
+            keyPassword 'unitone'
         }
         config {
-            storeFile file('F:/liwenbin/pos/spos.jks')
-            keyAlias 'spos'
-            keyPassword 'unitone@2018'
-            storePassword 'unitone@2018'
+            storeFile file('F:/liwenbin/pos/sp20.jks')
+            keyAlias 'key0'
+            keyPassword 'unitone'
+            storePassword 'unitone'
         }
     }
 //    flavorDimensions "minSdkVersion19"
@@ -79,11 +82,11 @@ android {
 //            dimension   "minSdkVersion16"
 //        }
 //    }
-
     buildTypes {
         debug {
             minifyEnabled false
             multiDexEnabled true
+            signingConfig signingConfigs.debug
         }
         release {
             minifyEnabled true
@@ -91,20 +94,16 @@ android {
             signingConfig signingConfigs.config
         }
     }
-
     configurations.all {
         resolutionStrategy.force 'com.google.code.findbugs:jsr305:3.0.2'
         resolutionStrategy.force "com.android.support:support-annotations:$supportLibraryVersion"
     }
-
     useLibrary 'org.apache.http.legacy'
-
     sourceSets {
         main {
             jniLibs.srcDirs = ['libs']
         }
     }
-
 //    android.applicationVariants.all { variant ->
 //        variant.outputs.each { output ->
 //            def outputFile = output.outputFile
@@ -114,22 +113,22 @@ android {
 //            }
 //        }
 //    }
-
     android.applicationVariants.all { variant ->
         variant.outputs.all {
             outputFileName = "uChat-${buildType.name}-v${defaultConfig.versionName}-${releaseTime()}.apk"
         }
     }
-
     externalNativeBuild {
         ndkBuild {
-           path 'src/main/jni/Android.mk'
+            path 'src/main/jni/Android.mk'     //for speex
+            path 'src/main/jni/opus/Android.mk'   //for opus
         }
     }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+    productFlavors {
     }
 }
 
@@ -168,19 +167,21 @@ dependencies {
     implementation "com.android.support:recyclerview-v7:$supportLibraryVersion"
     implementation "com.android.support:appcompat-v7:$supportLibraryVersion"
     implementation "com.android.support:support-v4:$supportLibraryVersion"
+
     // gRPC
     implementation "io.grpc:grpc-okhttp:$grpcVersion"
     implementation "io.grpc:grpc-protobuf-lite:$grpcVersion"
     implementation "io.grpc:grpc-stub:$grpcVersion"
     implementation 'javax.annotation:javax.annotation-api:1.2'
-//    protobuf 'com.google.protobuf:protobuf-java:3.3.1'
 
+    //    protobuf 'com.google.protobuf:protobuf-java:3.3.1'
     implementation 'com.android.support.constraint:constraint-layout:1.1.3'
 
-//    implementation 'org.conscrypt:conscrypt-android:1.4.1+'
+    //    implementation 'org.conscrypt:conscrypt-android:1.4.1+'
 
-//    implementation "android.arch.lifecycle:extensions:$lifecycle_version"
-  //  implementation "android.arch.lifecycle:$lifecycle_version"
+    //    implementation "android.arch.lifecycle:extensions:$lifecycle_version"
+
+    //  implementation "android.arch.lifecycle:$lifecycle_version"
 
     // OAuth2 for Google API
     implementation('com.google.auth:google-auth-library-oauth2-http:0.7.0') {
@@ -190,26 +191,39 @@ dependencies {
     // Tests
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
-//    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 
+    //    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
     androidTestImplementation('com.android.support.test.espresso:espresso-core:3.0.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-//    implementation 'com.android.support:appcompat-v7:28.0.0'
-//    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
-//    implementation 'com.android.support:design:28.0.0'
-//    implementation 'com.android.support:recyclerview-v7:28.0.0'
 
-//    implementation 'com.android.support.test:runner:1.0.2'
-//    implementation 'com.android.support.test.espresso:espresso-core:3.0.2'
-//    implementation 'com.qmuiteam:qmui:1.1.6'
-//    implementation 'com.jakewharton:butterknife:8.8.1'
-//    annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
-//    implementation 'android.arch.lifecycle:extensions:1.1.1'
-//    debugImplementation 'com.squareup.leakcanary:leakcanary-android:1.6.1'
-//    releaseImplementation 'com.squareup.leakcanary:leakcanary-android-no-op:1.6.1'
-//    debugImplementation 'com.squareup.leakcanary:leakcanary-support-fragment:1.6.1'
-//    implementation 'com.tencent.bugly:crashreport_upgrade:1.3.5'
+    //    implementation 'com.android.support:appcompat-v7:28.0.0'
+
+    //    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
+
+    //    implementation 'com.android.support:design:28.0.0'
+
+    //    implementation 'com.android.support:recyclerview-v7:28.0.0'
+
+    //    implementation 'com.android.support.test:runner:1.0.2'
+
+    //    implementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+
+    //    implementation 'com.qmuiteam:qmui:1.1.6'
+
+    //    implementation 'com.jakewharton:butterknife:8.8.1'
+
+    //    annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
+
+    //    implementation 'android.arch.lifecycle:extensions:1.1.1'
+
+    //    debugImplementation 'com.squareup.leakcanary:leakcanary-android:1.6.1'
+
+    //    releaseImplementation 'com.squareup.leakcanary:leakcanary-android-no-op:1.6.1'
+
+    //    debugImplementation 'com.squareup.leakcanary:leakcanary-support-fragment:1.6.1'
+
+    //    implementation 'com.tencent.bugly:crashreport_upgrade:1.3.5'
 }
 
 task copySecretKey(type: Copy) {

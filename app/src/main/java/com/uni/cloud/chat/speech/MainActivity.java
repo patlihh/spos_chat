@@ -61,6 +61,7 @@ import android.widget.TextView;
 
 import com.uni.cloud.chat.R;
 import com.uni.cloud.chat.audio.AudioDataUtil;
+import com.uni.cloud.chat.audio.OpusEncoder;
 import com.uni.cloud.chat.log.LogcatHelper;
 import com.uni.cloud.chat.log.Logger;
 
@@ -86,6 +87,9 @@ import java.util.concurrent.TimeUnit;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+
+import static com.uni.cloud.chat.misc.Option.Opus.FRAME_SIZE;
+import static com.uni.cloud.chat.misc.Option.Opus.NUM_CHANNELS;
 
 
 public class MainActivity extends AppCompatActivity implements MessageDialogFragment.Listener, View.OnClickListener {
@@ -131,6 +135,10 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
     private ManagedChannel trans_channel;
     private ManagedChannel tts_channel;
 
+    OpusEncoder encoder;
+    //  byte[] inBuf = new byte[FRAME_SIZE * NUM_CHANNELS * 2];
+    byte[] encBuf = new byte[1024];
+    short[] outBuf = new short[FRAME_SIZE * NUM_CHANNELS];
 
     private final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
 
@@ -141,6 +149,11 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
                 Log.d("test", "onVoiceStart");
                 mSpeechService.startSendVoiceing(Option.dest_id, mVoiceRecorder.getSampleRate());
                 Is_haveVoice = true;
+
+                if(Option.Opus.Is_Opus){
+                    encoder = new OpusEncoder();
+                    encoder.init(mVoiceRecorder.getSampleRate(), NUM_CHANNELS, OpusEncoder.OPUS_APPLICATION_VOIP);
+                }
             }
         }
 
@@ -148,9 +161,14 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
         public void onVoice(byte[] data, int size) {
             if (mSpeechService != null && Is_haveVoice) {
                 Log.d("test", "onVoice data.length=" + data.length + ";size=" + size);
-
-                Log.d("test", "Not Speex onVoice");
-                mSpeechService.SendVoiceing(Option.dest_id, mVoiceRecorder.getSampleRate(), data, size);
+                if(Option.Opus.Is_Opus) {
+                    int encoded = encoder.encode(data, FRAME_SIZE, encBuf);
+                    Log.v(TAG, "Encoded " + data.length + " bytes of audio into " + encoded + " bytes");
+                    mSpeechService.SendVoiceing(Option.dest_id, mVoiceRecorder.getSampleRate(), encBuf, encoded);
+                }else {
+                    Log.d("test", "Not Speex onVoice");
+                    mSpeechService.SendVoiceing(Option.dest_id, mVoiceRecorder.getSampleRate(), data, size);
+                }
 
             }
         }
@@ -160,12 +178,15 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
             if (mSpeechService != null && Is_haveVoice) {
                 Log.d("test", "onVoice data.length=" + data.length + ";size=" + size);
 
-
                 int spx_len = AudioDataUtil.raw2spx(data).length;
                 Log.d("test", "Speex onVoice spx_len=" + spx_len);
-                mSpeechService.SendVoiceing(Option.dest_id, mVoiceRecorder.getSampleRate(), AudioDataUtil.raw2spx(data), spx_len);
-
-
+                if(Option.Opus.Is_Opus) {
+                    int encoded = encoder.encode(data, FRAME_SIZE, encBuf);
+                    Log.v(TAG, "Encoded " + data.length + " bytes of audio into " + encoded + " bytes");
+                    mSpeechService.SendVoiceing(Option.dest_id, mVoiceRecorder.getSampleRate(), encBuf, encBuf.length);
+                }else {
+                    mSpeechService.SendVoiceing(Option.dest_id, mVoiceRecorder.getSampleRate(), AudioDataUtil.raw2spx(data), spx_len);
+                }
             }
         }
 
@@ -176,6 +197,10 @@ public class MainActivity extends AppCompatActivity implements MessageDialogFrag
             Is_haveVoice = false;
             if (mSpeechService != null) {
                 mSpeechService.finishSendVoiceing(Option.dest_id, mVoiceRecorder.getSampleRate());
+
+                if(Option.Opus.Is_Opus) {
+                    encoder.close();
+                }
             }
         }
     };

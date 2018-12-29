@@ -62,6 +62,7 @@ import com.google.protobuf.ByteString;
 import com.uni.cloud.chat.ChatApplication;
 import com.uni.cloud.chat.R;
 import com.uni.cloud.chat.audio.AudioDataUtil;
+import com.uni.cloud.chat.audio.OpusEncoder;
 import com.uni.cloud.chat.dialog.MessageDialog;
 import com.uni.cloud.chat.log.LogcatHelper;
 import com.uni.cloud.chat.log.Logger;
@@ -71,7 +72,6 @@ import com.uni.cloud.chat.misc.FileUtil;
 import com.uni.cloud.chat.misc.LimitQueue;
 import com.uni.cloud.chat.misc.Option;
 import com.uni.cloud.chat.xunfei_tts.TtsDemo;
-
 
 
 import java.io.BufferedReader;
@@ -86,6 +86,7 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -93,6 +94,9 @@ import java.util.List;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+
+import static com.uni.cloud.chat.misc.Option.Opus.FRAME_SIZE;
+import static com.uni.cloud.chat.misc.Option.Opus.NUM_CHANNELS;
 
 
 public class ListUserActivity extends AppCompatActivity implements MessageDialogFragment.Listener, View.OnClickListener {
@@ -105,14 +109,13 @@ public class ListUserActivity extends AppCompatActivity implements MessageDialog
 
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
 
-    private  SpeechService mSpeechService;
-    private  ChatApplication mApp;
+    private SpeechService mSpeechService;
+    private ChatApplication mApp;
 
-    private  VoiceRecorder mVoiceRecorder;
+    private VoiceRecorder mVoiceRecorder;
 
     private String dest_id;
-   // private String me_id;
-
+    // private String me_id;
     private TextView me_tv;
     private TextView voice_tv;
 
@@ -121,33 +124,53 @@ public class ListUserActivity extends AppCompatActivity implements MessageDialog
     private ManagedChannel trans_channel;
     private ManagedChannel tts_channel;
 
-    RecyclerView.ViewHolder lastSendVoiceItem;
-    RecyclerView.ViewHolder lastHaveVoiceItem;
+    ViewHolder lastSendVoiceItem;
+    ViewHolder lastHaveVoiceItem;
 
-    private  UserListAdapter mAdapter;
-    private  RecyclerView mRecyclerView;
+    private static String last_recv_voice_id;
+    private static String last_send_voice_id;
+    private static boolean is_last_send_voice_ok;
 
-    private  List<UserItem> userItemList = new ArrayList<>();
+    private static UserListAdapter mAdapter;
+    private static RecyclerView mRecyclerView;
+
+    private static List<UserItem> userItemList = new ArrayList<>();
 
     private static ListUserActivity listUserActivity;
+
+    OpusEncoder encoder;
+    //  byte[] inBuf = new byte[FRAME_SIZE * NUM_CHANNELS * 2];
+    byte[] encBuf = new byte[1024];
 
     private final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
 
         @Override
         public void onVoiceStart() {
-            Log.d("test", "onVoiceStart mSpeechService="+mSpeechService);
+            Log.d("test", "onVoiceStart mSpeechService=" + mSpeechService + "SampleRate=" + mVoiceRecorder.getSampleRate());
             if (mSpeechService != null) {
                 mSpeechService.startSendVoiceing(dest_id, mVoiceRecorder.getSampleRate());
                 Is_haveVoice = true;
+
+                if (Option.Opus.Is_Opus) {
+                    encoder = new OpusEncoder();
+                    encoder.init(mVoiceRecorder.getSampleRate(), NUM_CHANNELS, OpusEncoder.OPUS_APPLICATION_VOIP);
+                }
+
             }
         }
 
         @Override
         public void onVoice(byte[] data, int size) {
             if (mSpeechService != null && Is_haveVoice) {
-                Log.d("test", "Not Speex onVoice data.length=" + data.length + ";size=" + size);
-                mSpeechService.SendVoiceing(dest_id, mVoiceRecorder.getSampleRate(), data, size);
-
+//                Log.d("opus", "Not Speex onVoice data.length=" + data.length + ";size=" + size+";data="+ByteUtil. byte2HexStr(data));
+                if (Option.Opus.Is_Opus) {
+                    int encoded = encoder.encode(data, FRAME_SIZE, encBuf);
+                    byte[] encBuf2 = Arrays.copyOf(encBuf, encoded);
+                    Log.v("opus", "Encoded " + data.length + " bytes of audio into " + encoded + " bytes" + ";encBuf=" + ByteUtil.byte2HexStr(encBuf2));
+                    mSpeechService.SendVoiceing(dest_id, mVoiceRecorder.getSampleRate(), encBuf2, encoded);
+                } else {
+                    mSpeechService.SendVoiceing(dest_id, mVoiceRecorder.getSampleRate(), data, size);
+                }
             }
         }
 
@@ -155,8 +178,15 @@ public class ListUserActivity extends AppCompatActivity implements MessageDialog
         public void onVoice(short[] data, int size) {
             if (mSpeechService != null && Is_haveVoice) {
                 int spx_len = AudioDataUtil.raw2spx(data).length;
-                Log.d("test", "Speex onVoice data.length=" + data.length + ";size=" + size+";spx_len=" + spx_len);
-                mSpeechService.SendVoiceing(dest_id, mVoiceRecorder.getSampleRate(), AudioDataUtil.raw2spx(data), spx_len);
+                Log.d("test", "Speex onVoice data.length=" + data.length + ";size=" + size + ";spx_len=" + spx_len);
+
+                if (Option.Opus.Is_Opus) {
+                    int encoded = encoder.encode(data, FRAME_SIZE, encBuf);
+                    Log.v(TAG, "Encoded " + data.length + " bytes of audio into " + encoded + " bytes");
+                    mSpeechService.SendVoiceing(dest_id, mVoiceRecorder.getSampleRate(), encBuf, encBuf.length);
+                } else {
+                    mSpeechService.SendVoiceing(dest_id, mVoiceRecorder.getSampleRate(), AudioDataUtil.raw2spx(data), spx_len);
+                }
             }
         }
 
@@ -166,34 +196,38 @@ public class ListUserActivity extends AppCompatActivity implements MessageDialog
             Is_haveVoice = false;
             if (mSpeechService != null) {
                 mSpeechService.finishSendVoiceing(dest_id, mVoiceRecorder.getSampleRate());
+
+                if (Option.Opus.Is_Opus&&encoder!=null) {
+                    encoder.close();
+                }
             }
         }
     };
 
-private final SpeechService.HeartListener mHeartListener =
-        new SpeechService.HeartListener() {
-            @Override
-            public void onHeart(boolean ret) {
-                if (ret) {
-                    Log.d(TAG, "onHeart success!");
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            RefreshAdapterItem();
-                        }
+    private final SpeechService.HeartListener mHeartListener =
+            new SpeechService.HeartListener() {
+                @Override
+                public void onHeart(boolean ret) {
+                    if (ret) {
+                        Log.d(TAG, "onHeart success!");
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                RefreshAdapterItem();
+                            }
                         });
-                } else {
-                    Log.d(TAG, "onHeart fail!");
+                    } else {
+                        Log.d(TAG, "onHeart fail!");
+                    }
                 }
-            }
-        };
+            };
 
     private final SpeechService.RecMsgListener mRecvMsgListener =
             new SpeechService.RecMsgListener() {
                 @Override
                 public void onRecMsg(String voice_id) {
                     Log.d(TAG, "onRecMsg....., voice_id=" + voice_id);
-
+                    last_recv_voice_id = voice_id;
                     if (voice_tv != null) {
                         runOnUiThread(new Runnable() {
                             @Override
@@ -207,6 +241,13 @@ private final SpeechService.HeartListener mHeartListener =
                             }
                         });
                     }
+
+                    //chang online flag
+                    if (!mAdapter.GetUserOnline(voice_id)) {
+                        mAdapter.SetUserOnline(voice_id, true);
+                        mAdapter.notifyDataSetChanged();
+                        mRecyclerView.requestLayout();
+                    }
                 }
             };
 
@@ -216,28 +257,29 @@ private final SpeechService.HeartListener mHeartListener =
                 public void onSendMsg(int res, String msg) {
                     Log.d(TAG, "onSendMsg..., res=" + res + ";msg=" + msg);
 
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                if(res!=Option.SendMsgRes.SEND_MSG_OK) {
-                                    SetItemSendVoice(mAdapter.getItemIndexbById(dest_id), false);
-                                    mVoiceRecorder.stoping();
-                                    switch (res) {
-                                        case Option.SendMsgRes.SEND_MSG_USER_LOGOUT:
-                        //                        mSpeechService.Login(me_id,password);
-                                            break;
-                                        case Option.SendMsgRes.SEND_MSG_NO_DEST_USER:
-                                            //              Toast.makeText(ListUserActivity.this,"no dest user",Toast.LENGTH_SHORT).show();
-                                            break;
-                                        case Option.SendMsgRes.SEND_MSG_DEST_USER_LOGOUT:
-                                            //               Toast.makeText(ListUserActivity.this,"dest user not login",Toast.LENGTH_SHORT).show();
-                                            break;
-                                    }
-                                }else{
-                                    SetItemSendVoice(mAdapter.getItemIndexbById(dest_id), true);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            last_send_voice_id = dest_id;
+                            if (res != Option.SendMsgRes.SEND_MSG_OK) {
+                                SetItemSendVoice(mAdapter.getItemIndexbById(dest_id), false);
+                                mVoiceRecorder.stoping();
+                                switch (res) {
+                                    case Option.SendMsgRes.SEND_MSG_USER_LOGOUT:
+                                        //                        mSpeechService.Login(me_id,password);
+                                        break;
+                                    case Option.SendMsgRes.SEND_MSG_NO_DEST_USER:
+                                        //              Toast.makeText(ListUserActivity.this,"no dest user",Toast.LENGTH_SHORT).show();
+                                        break;
+                                    case Option.SendMsgRes.SEND_MSG_DEST_USER_LOGOUT:
+                                        //               Toast.makeText(ListUserActivity.this,"dest user not login",Toast.LENGTH_SHORT).show();
+                                        break;
                                 }
+                            } else {
+                                SetItemSendVoice(mAdapter.getItemIndexbById(dest_id), true);
                             }
-                        });
+                        }
+                    });
 
                 }
             };
@@ -271,7 +313,8 @@ private final SpeechService.HeartListener mHeartListener =
     }
 
     public static ListUserActivity getListUserActivity() {
-        return listUserActivity;    }
+        return listUserActivity;
+    }
 
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
     private static String[] PERMISSIONS_STORAGE = {
@@ -300,7 +343,7 @@ private final SpeechService.HeartListener mHeartListener =
         mApp = (ChatApplication) getApplication();
 
         Log.d(TAG, "onCreate, mApp.isLogin=" + mApp.isLogin);
-        if(!mApp.isLogin) {
+        if (!mApp.isLogin) {
             Intent intent = new Intent(this, LoginActivity.class);
             startActivity(intent);
             finish();
@@ -589,12 +632,15 @@ private final SpeechService.HeartListener mHeartListener =
     private synchronized void RefreshAdapterItem(){
         Log.d(TAG, "RefreshAdapterItem mUsers size=" + mApp.mUsers.size());
         mAdapter.mUsers.clear();
-        mAdapter.notifyDataSetChanged();
+        //     mAdapter.notifyDataSetChanged();
 
         for (User usr : mApp.mUsers) {
             Log.d(TAG, "id=" + usr.id + ";name=" + usr.name+ ";islogin=" + usr.login+ ";isonline=" + usr.online);
             mAdapter.addUserItem(new UserItem(usr.name, usr.id, usr.login, usr.online));
         }
+
+        mAdapter.notifyDataSetChanged();
+        mRecyclerView.requestLayout();
     }
 
     private void showPermissionMessageDialog() {
@@ -604,43 +650,67 @@ private final SpeechService.HeartListener mHeartListener =
     }
 
     public void SetItemHaveVoice(int position) {
-        Log.d(TAG, "selectItem position=" + position);
-        View v = mRecyclerView.getChildAt(position);
-        if(v != null) {
-            RecyclerView.ViewHolder viewHolder = mRecyclerView.getChildViewHolder(v);
+        Log.d(TAG, "SetItemHaveVoice1111 selectItem position=" + position);
+        mAdapter.notifyDataSetChanged();
+        mRecyclerView.requestLayout();
+        ViewHolder viewHolder = (ViewHolder) mRecyclerView.findViewHolderForAdapterPosition(position);
+        Log.d(TAG, "SetItemHaveVoice1111 selectItem viewHolder=" + viewHolder);
+        if (viewHolder != null) {
+            Log.d(TAG, "SetItemHaveVoice1111 selectItem position text=" + viewHolder.Idtext.getText());
+
             if (lastHaveVoiceItem != null && lastHaveVoiceItem != viewHolder) {
-                lastHaveVoiceItem.itemView.findViewById(R.id.account_id).setBackgroundColor(getResources().getColor(R.color.white));
+                lastHaveVoiceItem.Idtext.setBackgroundColor(getResources().getColor(R.color.white));
             }
-            viewHolder.itemView.findViewById(R.id.account_id).setBackgroundColor(getResources().getColor(R.color.green));
+            Log.d(TAG, "selectItem position=" + position + " set green!");
+            viewHolder.Idtext.setBackgroundColor(getResources().getColor(R.color.green));
             lastHaveVoiceItem = viewHolder;
-            mAdapter.notifyDataSetChanged();
+        }else {
+            Log.e(TAG, "SetItemHaveVoice1111 selectItem viewHolder null");
         }
+//        mAdapter.notifyDataSetChanged();
+//        View v = mRecyclerView.getChildAt(position);
+//        if(v != null) {
+//            RecyclerView.ViewHolder viewHolder = mRecyclerView.getChildViewHolder(v);
+//            if (lastHaveVoiceItem != null && lastHaveVoiceItem != viewHolder) {
+//                lastHaveVoiceItem.itemView.findViewById(R.id.account_id).setBackgroundColor(getResources().getColor(R.color.white));
+//            }
+//            viewHolder.itemView.findViewById(R.id.account_id).setBackgroundColor(getResources().getColor(R.color.green));
+//            lastHaveVoiceItem = viewHolder;
+////            mAdapter.notifyDataSetChanged();
+//        }else {
+//            Log.e(TAG, "SetItemHaveVoice1111 selectItem viewHolder null");
+//        }
+
     }
 
-    public void SetItemSendVoice(int position, boolean is_ok)
-    {
-        Log.d(TAG, "selectItem position=" + position+";is_ok="+is_ok);
-        View v = mRecyclerView.getChildAt(position);
-        if(v!=null) {
-            RecyclerView.ViewHolder viewHolder = mRecyclerView.getChildViewHolder(v);
+    public void SetItemSendVoice(int position, boolean is_ok) {
+        Log.d(TAG, "SetItemSendVoice selectItem position=" + position + ";is_ok=" + is_ok);
+        is_last_send_voice_ok = is_ok;
+        mAdapter.notifyDataSetChanged();
+        mRecyclerView.requestLayout();
+        ViewHolder viewHolder = (ViewHolder) mRecyclerView.findViewHolderForAdapterPosition(position);
+
+        if (viewHolder != null) {
             Log.d(TAG, "selectItem viewHolder=" + viewHolder + ";lastSendVoiceItem=" + lastSendVoiceItem);
             if (lastSendVoiceItem != null && lastSendVoiceItem != viewHolder) {
                 Log.d(TAG, "selectItem set lastSendVoiceItem");
-                lastSendVoiceItem.itemView.findViewById(R.id.account_id).setBackgroundColor(getResources().getColor(R.color.white));
+                lastSendVoiceItem.Nametext.setBackgroundColor(getResources().getColor(R.color.white));
             }
             lastSendVoiceItem = viewHolder;
+
             if (is_ok) {
-                viewHolder.itemView.findViewById(R.id.account_id).setBackgroundColor(getResources().getColor(R.color.blue));
+                Log.d(TAG, "selectItem position=" + position + " set blue!");
+                viewHolder.Nametext.setBackgroundColor(getResources().getColor(R.color.blue));
             } else {
-                viewHolder.itemView.findViewById(R.id.account_id).setBackgroundColor(getResources().getColor(R.color.red));
+                Log.d(TAG, "selectItem position=" + position + " set red!");
+                viewHolder.Nametext.setBackgroundColor(getResources().getColor(R.color.red));
             }
 
             Log.d(TAG, "lastSendVoiceItem11111=" + lastSendVoiceItem);
-
-            mAdapter.notifyDataSetChanged();
         }else {
-            Log.e(TAG, "selectItem viewHolder null");
+            Log.e(TAG, "SetItemSendVoice selectItem viewHolder null");
         }
+
     }
 
     @Override
@@ -688,7 +758,7 @@ private final SpeechService.HeartListener mHeartListener =
     public class UserItem {
         private String NameText;
         private String IdText;
-        private boolean  Islogin;
+        private boolean Islogin;
         private boolean Isonline;
 
         public UserItem() {
@@ -699,6 +769,7 @@ private final SpeechService.HeartListener mHeartListener =
             this.NameText = nameText;
             this.IdText = idText;
         }
+
         public UserItem(String nameText, String idText, boolean islogin, boolean isonline) {
             this.NameText = nameText;
             this.IdText = idText;
@@ -804,7 +875,7 @@ private final SpeechService.HeartListener mHeartListener =
             this.mItemTouchListener = onItemTouchListener;
         }
 
-        private List<UserItem> mUsers =  new ArrayList<>();
+        private List<UserItem> mUsers = new ArrayList<>();
 
         UserListAdapter(List<UserItem> users) {
             mUsers = users;
@@ -814,7 +885,7 @@ private final SpeechService.HeartListener mHeartListener =
         public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
             View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.list_item, parent, false);
             return new ViewHolder(itemView);
-//           return new ViewHolder(LayoutInflater.from(parent.getContext()), parent);
+            //          return new ViewHolder(LayoutInflater.from(parent.getContext()), parent);
         }
 
         private String selectedId;
@@ -851,18 +922,44 @@ private final SpeechService.HeartListener mHeartListener =
 
         public void onBindViewHolder(ViewHolder holder, final int position) {
 
-          Log.d(TAG, "onBindViewHolder position=" + position+";Isonline="+mUsers.get(position).Isonline);
+            Log.d(TAG, "onBindViewHolder position=" + position + ";Isonline=" + mUsers.get(position).Isonline);
+            Log.d(TAG, "onBindViewHolder last_recv_voice_id=" + last_recv_voice_id + ";last_send_voice_id=" + last_send_voice_id);
 
             holder.Nametext.setText(mUsers.get(position).getNameText());
             holder.Idtext.setText(mUsers.get(position).getIdText());
-            if(!mUsers.get(position).Isonline) {
+
+            holder.Nametext.setBackgroundColor(getListUserActivity().getResources().getColor(R.color.white));
+            holder.Idtext.setBackgroundColor(getListUserActivity().getResources().getColor(R.color.white));
+            holder.Idtext.setTextColor(getListUserActivity().getResources().getColor(R.color.dividerColor));
+
+            if (!mUsers.get(position).Isonline) {
                 holder.Nametext.setTextColor(getListUserActivity().getResources().getColor(R.color.dividerColor));
-                holder.Idtext.setTextColor(getListUserActivity().getResources().getColor(R.color.dividerColor));
-                holder.Nametext.setBackgroundColor(getListUserActivity().getResources().getColor(R.color.white));
-                holder.Idtext.setBackgroundColor(getListUserActivity().getResources().getColor(R.color.white));
-            }
-            else {
+            } else {
                 holder.Nametext.setTextColor(getListUserActivity().getResources().getColor(R.color.black));
+
+//                //set last recv voice
+//                if(mUsers.get(position).getIdText().equals(last_recv_voice_id)){
+//                    holder.Idtext.setBackgroundColor(getListUserActivity().getResources().getColor(R.color.green));
+//                }
+//
+//                //set last send voice
+//                if(mUsers.get(position).getIdText().equals(last_send_voice_id)){
+//                    if(is_last_send_voice_ok)
+//                        holder.Nametext.setBackgroundColor(getListUserActivity().getResources().getColor(R.color.blue));
+//                    else
+//                        holder.Nametext.setBackgroundColor(getListUserActivity().getResources().getColor(R.color.red));
+//                }
+            }
+            //set last recv voice
+            if (mUsers.get(position).getIdText().equals(last_recv_voice_id)) {
+                holder.Idtext.setBackgroundColor(getListUserActivity().getResources().getColor(R.color.green));
+            }
+            //set last send voice
+            if (mUsers.get(position).getIdText().equals(last_send_voice_id)) {
+                if (is_last_send_voice_ok)
+                    holder.Nametext.setBackgroundColor(getListUserActivity().getResources().getColor(R.color.blue));
+                else
+                    holder.Nametext.setBackgroundColor(getListUserActivity().getResources().getColor(R.color.red));
             }
 
             if (mItemClickListener != null) {
@@ -917,7 +1014,7 @@ private final SpeechService.HeartListener mHeartListener =
 //            String upperString = result.substring(0,1).toUpperCase() + result.substring(1);   //patli20180706
             Log.d("test", "SetResultServer pos=" + pos + "; str=" + result);
             mUsers.get(pos).setIdText(result);
-            notifyDataSetChanged();
+        //    notifyDataSetChanged();
             //        notifyItemInserted(0);
         }
 
@@ -926,7 +1023,7 @@ private final SpeechService.HeartListener mHeartListener =
 //            Log.d("test", "result.substring(0,1).toUpperCase()=" + result.substring(0,1).toUpperCase());
             Log.d("test", "SetResultClient pos=" + pos + "; str=" + name);
             mUsers.get(pos).setNameText(name);
-            notifyDataSetChanged();
+    //        notifyDataSetChanged();
 
 //            notifyItemInserted(0);
         }
@@ -964,6 +1061,27 @@ private final SpeechService.HeartListener mHeartListener =
                 }
             }
             return "";
+        }
+
+        void SetUserOnline(String id, boolean is_online) {
+            Log.d("test", "SetUserOnline id=" + id);
+            for (UserItem usr : mUsers) {
+                if (usr.getIdText().contentEquals(id)) {
+                    usr.setIslogin(is_online);
+                    usr.setIsonline(is_online);
+                }
+            }
+            //         notifyDataSetChanged();
+        }
+
+        boolean GetUserOnline(String id) {
+            Log.d("test", "GetUserOnline id=" + id);
+            for (UserItem usr : mUsers) {
+                if (usr.getIdText().contentEquals(id)) {
+                    return usr.isIsonline();
+                }
+            }
+            return false;
         }
     }
 

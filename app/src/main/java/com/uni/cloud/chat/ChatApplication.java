@@ -6,9 +6,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.support.multidex.MultiDex;
+//import android.support.multidex.MultiDex;
 import android.util.Log;
 
 import com.uni.cloud.chat.speech.SpeechService;
@@ -93,6 +95,20 @@ public class ChatApplication extends Application {
 
     }
 
+    public static String getLocalVersionName(Context ctx) {
+        String localVersion = "";
+        try {
+            PackageInfo packageInfo = ctx.getApplicationContext()
+                    .getPackageManager()
+                    .getPackageInfo(ctx.getPackageName(), 0);
+            localVersion = packageInfo.versionName;
+            Log.d("TAG", "当前版本名称：" + localVersion);
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
+        return localVersion;
+    }
+
     public String getOwer_id() {
         return ower_id;
     }
@@ -134,7 +150,7 @@ public class ChatApplication extends Application {
     @Override
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(base);
-        MultiDex.install(this);
+   //     MultiDex.install(this);
     }
     public class MyBroadcastReceiver extends BroadcastReceiver {
 

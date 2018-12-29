@@ -24,6 +24,10 @@ import android.util.Log;
 
 import com.uni.cloud.chat.misc.Option;
 
+import static com.uni.cloud.chat.misc.Option.Opus.FRAME_SIZE;
+import static com.uni.cloud.chat.misc.Option.Opus.NUM_CHANNELS;
+import static com.uni.cloud.chat.misc.Option.Opus.SAMPLE_RATE;
+
 
 /**
  * Continuously records audio and notifies the {@link VoiceRecorder.Callback} when voice (or any
@@ -36,8 +40,8 @@ import com.uni.cloud.chat.misc.Option;
 public class VoiceRecorder {
 
     //  private static final int[] SAMPLE_RATE_CANDIDATES = new int[]{16000, 11025, 22050, 44100};
-   // private static final int[] SAMPLE_RATE_CANDIDATES = new int[]{16000};
-    private static final int[] SAMPLE_RATE_CANDIDATES = new int[]{44100};
+    // private static final int[] SAMPLE_RATE_CANDIDATES = new int[]{16000};
+    private static final int[] SAMPLE_RATE_CANDIDATES = new int[]{8000};
     private static final int CHANNEL = AudioFormat.CHANNEL_IN_MONO;
     private static final int ENCODING = AudioFormat.ENCODING_PCM_16BIT;
 
@@ -77,9 +81,11 @@ public class VoiceRecorder {
 
     private Thread mThread;
 
-    private byte[] mBuffer;
+ //   private byte[] mBuffer;
 
     private short[] smBuffer;
+
+    private byte[] inBuf = new byte[FRAME_SIZE * NUM_CHANNELS * 2];
 
     private final Object mLock = new Object();
 
@@ -139,7 +145,7 @@ public class VoiceRecorder {
                 mAudioRecord.release();
                 mAudioRecord = null;
             }
-            mBuffer = null;
+   //         inBuf = null;
         }
     }
 
@@ -180,22 +186,49 @@ public class VoiceRecorder {
      * permissions?).
      */
     private AudioRecord createAudioRecord() {
-        for (int sampleRate : SAMPLE_RATE_CANDIDATES) {
-            final int sizeInBytes = AudioRecord.getMinBufferSize(sampleRate, CHANNEL, ENCODING);
-            Log.d("test", "createAudioRecord sampleRate=" + sampleRate + ";sizeInBytes=" + sizeInBytes);
-            if (sizeInBytes == AudioRecord.ERROR_BAD_VALUE) {
-                continue;
-            }
-            final AudioRecord audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC,
-                    sampleRate, CHANNEL, ENCODING, sizeInBytes);
-            if (audioRecord.getState() == AudioRecord.STATE_INITIALIZED) {
-                mBuffer = new byte[sizeInBytes];
-                smBuffer = new short[sizeInBytes];
-                return audioRecord;
-            } else {
-                audioRecord.release();
-            }
+
+        int minBufSize = AudioRecord.getMinBufferSize(SAMPLE_RATE,
+                NUM_CHANNELS == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO,
+                AudioFormat.ENCODING_PCM_16BIT);
+
+        // initialize audio recorder
+//        AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
+//                SAMPLE_RATE,
+//                NUM_CHANNELS == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO,
+//                AudioFormat.ENCODING_PCM_16BIT,
+//                minBufSize);
+
+        AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                SAMPLE_RATE,
+                NUM_CHANNELS == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                minBufSize);
+
+        if (recorder.getState() == AudioRecord.STATE_INITIALIZED) {
+   //         mBuffer = new byte[minBufSize];
+            smBuffer = new short[minBufSize];
+            return recorder;
+        } else {
+            recorder.release();
         }
+//
+//        for (int sampleRate : SAMPLE_RATE_CANDIDATES) {
+//            final int sizeInBytes = AudioRecord.getMinBufferSize(sampleRate, CHANNEL, ENCODING);
+//            Log.d("test", "createAudioRecord sampleRate=" + sampleRate + ";sizeInBytes=" + sizeInBytes);
+//            if (sizeInBytes == AudioRecord.ERROR_BAD_VALUE) {
+//                continue;
+//            }
+//            final AudioRecord audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC,
+//                    sampleRate, CHANNEL, ENCODING, sizeInBytes);
+//
+//            if (audioRecord.getState() == AudioRecord.STATE_INITIALIZED) {
+//                mBuffer = new byte[sizeInBytes];
+//                smBuffer = new short[sizeInBytes];
+//                return audioRecord;
+//            } else {
+//                audioRecord.release();
+//            }
+//        }
         return null;
     }
 
@@ -235,21 +268,21 @@ public class VoiceRecorder {
                         }
 
                     } else {
-                        final int size = mAudioRecord.read(mBuffer, 0, mBuffer.length);
+                        final int size = mAudioRecord.read(inBuf, 0, inBuf.length);
 
                         final long now = System.currentTimeMillis();
-                        if (isHearingVoice(mBuffer, size)) {
+                        if (isHearingVoice(inBuf, size)) {
                             if (mLastVoiceHeardMillis == Long.MAX_VALUE) {
                                 mVoiceStartedMillis = now;
                                 mCallback.onVoiceStart();
                             }
-                            mCallback.onVoice(mBuffer, size);
+                            mCallback.onVoice(inBuf, size);
                             mLastVoiceHeardMillis = now;
                             if (now - mVoiceStartedMillis > MAX_SPEECH_LENGTH_MILLIS) {
                                 end();
                             }
                         } else if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
-                            mCallback.onVoice(mBuffer, size);
+                            mCallback.onVoice(inBuf, size);
                             if (now - mLastVoiceHeardMillis > SPEECH_TIMEOUT_MILLIS) {
                                 end();
                             }

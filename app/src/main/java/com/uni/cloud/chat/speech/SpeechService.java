@@ -25,6 +25,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.media.AudioFormat;
 import android.media.AudioManager;
+import android.media.AudioRecord;
 import android.media.AudioTrack;
 import android.os.AsyncTask;
 import android.os.Binder;
@@ -58,6 +59,7 @@ import com.iflytek.cloud.util.ResourceUtil;
 import com.uni.cloud.chat.ChatApplication;
 import com.uni.cloud.chat.R;
 import com.uni.cloud.chat.audio.AudioDataUtil;
+import com.uni.cloud.chat.audio.OpusDecoder;
 import com.uni.cloud.chat.misc.ByteUtil;
 import com.uni.cloud.chat.misc.Option;
 import com.uni.cloud.chat.xunfei_tts.TtsDemo;
@@ -119,6 +121,10 @@ import io.grpc.uni.spos.RecvMsgReq;
 import io.grpc.uni.spos.RecvMsgRes;
 import io.grpc.uni.spos.SendMsgReq;
 import io.grpc.uni.spos.SendMsgRes;
+
+import static com.uni.cloud.chat.misc.Option.Opus.FRAME_SIZE;
+import static com.uni.cloud.chat.misc.Option.Opus.NUM_CHANNELS;
+import static com.uni.cloud.chat.misc.Option.Opus.SAMPLE_RATE;
 
 public class SpeechService extends Service {
 
@@ -226,6 +232,10 @@ public class SpeechService extends Service {
 
     private byte[] recv_buf;
 
+//    private short[] recv_sbuf;
+    OpusDecoder decoder;
+    short[] outBuf = new short[FRAME_SIZE * NUM_CHANNELS];
+//    AudioTrack track;
     //private static final boolean stt_trans_tts_flag = true;
 
 //    private final StreamObserver<StreamingRecognizeResponse> mResponseObserver
@@ -376,11 +386,33 @@ public class SpeechService extends Service {
 
                 voice_id = response.getSid();
 
-                if ((recv_buf == null || response.getMsgNum() == 1) && response.getMsgLen() > 0) {
-                    recv_buf = response.getMsg().toByteArray();
+                if ((recv_buf == null|| response.getMsgNum() == 1) && response.getMsgLen() > 0) {
+                    if(Option.Opus.Is_Opus){
+                        Log.d("opus", "frame="+response.getMsgNum()+";response.getMsg().toByteArray()="+ByteUtil. byte2HexStr(response.getMsg().toByteArray()));
+
+                        int decoded = decoder.decode(response.getMsg().toByteArray(), outBuf, FRAME_SIZE);
+
+                        Log.v("opus", "response.getMsgLen()="+response.getMsgLen()+" Decoded back000000 " + decoded * NUM_CHANNELS * 2  + " bytes");
+
+                        recv_buf = Arrays.copyOf(ByteUtil.toByteArray(outBuf,true), decoded * NUM_CHANNELS * 2);
+                    }else{
+                        recv_buf = response.getMsg().toByteArray();
+                    }
+
                 } else {
-                    if (recv_buf != null)
-                        recv_buf = ByteUtil.append(recv_buf, response.getMsg().toByteArray());
+                    if (recv_buf != null) {
+                        if(Option.Opus.Is_Opus){
+                            Log.d("opus", "frame="+response.getMsgNum()+";response.getMsg().toByteArray()="+ByteUtil. byte2HexStr(response.getMsg().toByteArray()));
+
+                            int decoded = decoder.decode(response.getMsg().toByteArray(), outBuf, FRAME_SIZE);
+
+                            Log.v("opus", "response.getMsgLen()="+response.getMsgLen()+" Decoded back000000 " + decoded * NUM_CHANNELS * 2  + " bytes");
+
+                            recv_buf = ByteUtil.append(recv_buf,Arrays.copyOf(ByteUtil.toByteArray(outBuf, true), decoded * NUM_CHANNELS * 2));
+                        }else {
+                            recv_buf = ByteUtil.append(recv_buf, response.getMsg().toByteArray());
+                        }
+                    }
                 }
 
                 if (recv_buf != null)
@@ -393,37 +425,35 @@ public class SpeechService extends Service {
                     if (mRecvMsgListener != null && voice_id != null && voice_id.length() > 0) mRecvMsgListener.onRecMsg(voice_id);
 
                     Log.d(TAG, "recvMsgStream::response play voice....");
+
 // 获得音频缓冲区大小  
-                    int bufferSize = android.media.AudioTrack.getMinBufferSize(response.getSampleRate(), AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
-                    Log.e(TAG, "播放缓冲区大小" + bufferSize);
+                        int bufferSize = android.media.AudioTrack.getMinBufferSize(response.getSampleRate(), AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
+                        Log.e(TAG, "播放缓冲区大小" + bufferSize);
 // 获得音轨对象  STREAM_SYSTEM STREAM_MUSIC  STREAM_VOICE_CALL
-                    AudioTrack player = new AudioTrack(AudioManager.STREAM_MUSIC, response.getSampleRate(), AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize, AudioTrack.MODE_STREAM);
+                        AudioTrack player = new AudioTrack(AudioManager.STREAM_MUSIC, response.getSampleRate(), AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize, AudioTrack.MODE_STREAM);
 
 // 设置喇叭音量  
-                    player.setStereoVolume(1.0f, 1.0f);
+                       player.setVolume(player.getMaxVolume());
 
 // 开始播放声音  
-                    player.play();
-                    if (recv_buf != null) {
-                        if (Option.Speex_IsOpen) {
+                        player.play();
+                        if (recv_buf != null) {
+                            if (Option.Speex_IsOpen) {
 
-                            int raw_len = AudioDataUtil.spx2raw(recv_buf).length;
-                            Log.d(TAG, "recvMsgStream::raw_len=" + raw_len);
+                                int raw_len = AudioDataUtil.spx2raw(recv_buf).length;
+                                Log.d(TAG, "recvMsgStream::raw_len=" + raw_len);
 
-                            player.write(AudioDataUtil.spx2raw(recv_buf), 0, raw_len);// 播放音频数据
-                        } else {
-                            //                      player.write(response.getMsg().toByteArray(), 0, response.getMsg().toByteArray().length);// 播放音频数据
-                            player.write(recv_buf, 0, recv_buf.length);// 播放音频数据
-
+                                player.write(AudioDataUtil.spx2raw(recv_buf), 0, raw_len);// 播放音频数据
+                            } else {
+                                     player.write(recv_buf, 0, recv_buf.length);// 播放音频数据
+                            }
                         }
-                    }
-                    player.stop();
-                    player.release();
-                    player = null;
+                        player.stop();
+                        player.release();
+                        player = null;
 
                     recv_buf = null;
                 }
-
             }
         }
 
@@ -434,14 +464,12 @@ public class SpeechService extends Service {
             if (mRecvMsgErrorHandler != null) {
                 mRecvMsgErrorHandler.postDelayed(mRecvMsgRunnable, 5000);
             }
-
         }
 
         @Override
         public void onCompleted() {
             Log.i(TAG, "recvMsgStream API completed.");
         }
-
     };
 
 
@@ -472,7 +500,6 @@ public class SpeechService extends Service {
                     break;
 
             }
-
         }
 
         @Override
@@ -484,7 +511,6 @@ public class SpeechService extends Service {
         public void onCompleted() {
             Log.i(TAG, "SendMsg API completed.");
         }
-
     };
 
     private final StreamObserver<ClientHeartRes> mHeartResponseObserver
@@ -635,6 +661,11 @@ public class SpeechService extends Service {
         }
 
         registerBoradcastReceiver();
+
+        if(Option.Opus.Is_Opus) {
+            decoder = new OpusDecoder();
+            decoder.init(SAMPLE_RATE, NUM_CHANNELS);
+        }
     }
 
     @Override
@@ -665,6 +696,10 @@ public class SpeechService extends Service {
         mAccessTokenTask = null;
 
         stopHeartTimer();
+
+        if(Option.Opus.Is_Opus) {
+            decoder.close();
+        }
     }
 
 
@@ -858,6 +893,7 @@ public class SpeechService extends Service {
         frameNum++;
         frameStatus = 1;
 
+        Log.v("opus", "voiceing the audio. frameid=" + frameId + ";frameNum=" + frameNum + ";frameStatus=" + frameStatus + ";size=" + size);
         Log.w(TAG, "voiceing the audio. frameid=" + frameId + ";frameNum=" + frameNum + ";frameStatus=" + frameStatus + ";size=" + size);
         if (mSendMsgReqObserver == null) {
             return;
@@ -1044,40 +1080,41 @@ public class SpeechService extends Service {
                     keyStore.load(null, null);
                     keyStore.setCertificateEntry("ca-gubstech", server_ca);
 
+//                    TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory
+//                            .getDefaultAlgorithm());
+//                    trustManagerFactory.init(keyStore);
+//
+//                    TrustManager[] trustManagers = trustManagerFactory.getTrustManagers();
+//
+//                    if (trustManagers.length != 1 || !(trustManagers[0] instanceof X509TrustManager)) {
+//                        throw new IllegalStateException("Unexpected default trust managers:"
+//                                + Arrays.toString(trustManagers));
+//                    }
+//
+//                    SSLContext sslContext = SSLContext.getInstance("TLS");
+//                    sslContext.init(null, new TrustManager[]{trustManagers[0]}, null);
+//                    SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
+                    SSLContext sslContext = SSLContext.getInstance("TLS");
+
                     TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory
                             .getDefaultAlgorithm());
+
                     trustManagerFactory.init(keyStore);
-
-                    TrustManager[] trustManagers = trustManagerFactory.getTrustManagers();
-
-                    if (trustManagers.length != 1 || !(trustManagers[0] instanceof X509TrustManager)) {
-                        throw new IllegalStateException("Unexpected default trust managers:"
-                                + Arrays.toString(trustManagers));
-                    }
-
-
-                    // SSLContext sslContext = SSLContext.getInstance("TLS");
-     //               TLSSocketFactory sslContext = new TLSSocketFactory();
-        //            sslContext.init(null, trustManagerFactory.getTrustManagers(), new SecureRandom());
-
-                    // 使用 X509TrustManager 初始化 SSLContext
-                    SSLContext sslContext = SSLContext.getInstance("TLS");
-                    sslContext.init(null, new TrustManager[]{trustManagers[0]}, null);
-                    SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
+                    sslContext.init(null, trustManagerFactory.getTrustManagers(), new SecureRandom());
 
                     if(Option.IsK8s_test){
                         Log.d(TAG, "AccessTokenTask ssl k8s test host=" + Option.k8s_test_host +";port="+Option.k8s_test_port);
                         channel = OkHttpChannelBuilder.forAddress(Option.k8s_test_host, Option.k8s_test_port)
                                 .overrideAuthority(Option.dns_name)
-                                .sslSocketFactory(sslSocketFactory)
+                                .sslSocketFactory(sslContext.getSocketFactory())
                                 .build();
 //                       channel = ZnzGrpcChannelBuilder.build(Option.k8s_test_host, Option.k8s_test_port, Option.dns_name, true, cert, null);
                     }else {
                         Log.d(TAG, "AccessTokenTask ssl host=" + Option.host + ";port=" + Option.ssl_port);
                         channel = OkHttpChannelBuilder.forAddress(Option.host, Option.ssl_port)
                                 .overrideAuthority(Option.dns_name)
-//                                .sslSocketFactory(sslContext.getSocketFactory())
-                                .sslSocketFactory(sslSocketFactory)
+                                .sslSocketFactory(sslContext.getSocketFactory())
+//                                .sslSocketFactory(sslSocketFactory)
                                 .build();
                     }
 

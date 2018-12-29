@@ -859,18 +859,48 @@ public class ByteUtil {
 //		return dest;
 //	}
 //
-//	public static byte[] toByteArray(short[] src) {
-//
-//		int count = src.length;
-//		byte[] dest = new byte[count << 1];
-//		for (int i = 0; i < count; i++) {
-//			dest[i * 2] = (byte) (src[i] >> 8);
-//			dest[i * 2 + 1] = (byte) (src[i] >> 0);
-//		}
-//
-//		return dest;
-//	}
+	public static byte[] toByteArray(short[] src, boolean Little_Endian) {
+
+		int count = src.length;
+		byte[] dest = new byte[count << 1];
+		for (int i = 0; i < count; i++) {
+
+			if(Little_Endian) {
+				dest[i * 2] = (byte) (src[i] >> 0);
+				dest[i * 2 + 1] = (byte) (src[i] >> 8);
+			}else {
+					dest[i * 2] = (byte) (src[i] >> 8);
+					dest[i * 2 + 1] = (byte) (src[i] >> 0);
+			}
+		}
+
+		return dest;
+	}
 
 
+//    public static short[] Bytes2Shorts(byte[] buf) {
+//        byte bLength = 2;
+//        short[] s = new short[buf.length / bLength];
+//        for (int iLoop = 0; iLoop < s.length; iLoop++) {
+//            byte[] temp = new byte[bLength];
+//            for (int jLoop = 0; jLoop < bLength; jLoop++) {
+//                temp[jLoop] = buf[iLoop * bLength + jLoop];
+//            }
+//            s[iLoop] = getShort(temp);
+//        }
+//        return s;
+//    }
+//
+//    public static byte[] Shorts2Bytes(short[] s) {
+//        byte bLength = 2;
+//        byte[] buf = new byte[s.length * bLength];
+//        for (int iLoop = 0; iLoop < s.length; iLoop++) {
+//            byte[] temp = getBytes(s[iLoop]);
+//            for (int jLoop = 0; jLoop < bLength; jLoop++) {
+//                buf[iLoop * bLength + jLoop] = temp[jLoop];
+//            }
+//        }
+//        return buf;
+//    }
 
 }

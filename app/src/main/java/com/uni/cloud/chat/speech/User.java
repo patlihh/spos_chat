@@ -6,6 +6,8 @@ public class User {
     boolean login;
     boolean online;
     boolean recvok;
+    boolean IsLastSend;
+    boolean IsLastRecv;
 
     public User(String id, String name, boolean islogin, boolean isonline) {
         this.id = id;
@@ -60,5 +62,13 @@ public class User {
 
     public void setRecvok(boolean recvok) {
         this.recvok = recvok;
+    }
+
+    public boolean isLastSend() {
+        return IsLastSend;
+    }
+
+    public void setLastSend(boolean lastSend) {
+        IsLastSend = lastSend;
     }
 }
